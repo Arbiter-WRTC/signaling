@@ -1,26 +1,61 @@
 import express from 'express';
 import cors from 'cors';
-import { Server } from 'socket.io';
+import { Server, Socket } from 'socket.io';
 import { createServer } from 'http';
 
 const app = express();
 
 const httpServer = createServer(app);
 const ioServer = new Server(httpServer, { 
-  cors: { origin: '*' }
+  cors: { origin: '*' },
 });
 
 app.use(cors());
 
-ioServer.on('connection', (socket) => {
-  console.log('ioServer connection')
+type ClientConnectProps = {
+  type: string;
+  id: string;
+};
 
-  socket.on('connect', () => {
-    console.log('ioServer:  connect event received.');
+let sfuSocket: Socket;
+const clients = new Map();
+
+ioServer.on('connection', (socket: Socket) => {
+  console.log('ioServer connection');
+  /**
+   * Client generates a UUID on its end
+   * Sends with the clientConnect signal
+   * Is UUID already in Map?
+   *  Replace Value with new Socket
+   * Else
+   *  Create a new KV Pair with UUID as key, socket as value
+   */
+  socket.on('clientConnect', (data: ClientConnectProps) => {
+    const { type } = data;
+    if (type === 'sfu') {
+      sfuSocket = socket;
+      console.log('SFU Connected, Storing Socket');
+    } else if (type === 'client') {
+      if (!sfuSocket) {
+        socket.emit('error', 'SFU not connected, try again later');
+        return;
+      }
+      console.log(`Client ${socket.id} Connected`);
+      clients.set(socket.id, socket);
+    } else {
+      socket.emit('error', 'Missing valid type property');
+    }
   });
 
-  socket.on('signal', () => {
+  socket.on('producerHandshake', () => {
     console.log('ioServer:  signal event received.');
+    sfuSocket.emit('test');
+    if (socket === sfuSocket) {
+      // TODO: Handle receiving signal from SFU
+    } else {
+      // TODO: Handle receiving signal from a client
+      // emit('signal', { ...data, sender: socket.id })
+    }
   });
 
   socket.on('newProducer', () => {
@@ -31,7 +66,7 @@ ioServer.on('connection', (socket) => {
     console.log('ioServer:  consumerCatchUp event received.');
   });
 
-  socket.on('consume', () => {
+  socket.on('consumerHandshake', () => {
     console.log('ioServer:  consume event received.');
   });
 });
