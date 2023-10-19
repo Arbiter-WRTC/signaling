@@ -4,6 +4,7 @@ module.exports = {
     'eslint:recommended',
     'plugin:@typescript-eslint/recommended',
     'plugin:@typescript-eslint/recommended-requiring-type-checking',
+    'plugin:@typescript-eslint/recommended-type-checked',
   ],
   plugins: ['@typescript-eslint', 'import'],
   env: {
@@ -19,6 +20,10 @@ module.exports = {
     '@typescript-eslint/restrict-plus-operands': 'off',
     '@typescript-eslint/no-unsafe-member-access': 'off',
     '@typescript-eslint/no-unused-vars': ['error', { argsIgnorePattern: '^_' }],
+    '@typescript-eslint/no-unsafe-call': ['error'],
+    '@typescript-eslint/no-unsafe-argument': ['error'],
+    '@typescript-eslint/no-unsafe-member-access': ['error'],
+    '@typescript-eslint/no-unsafe-assignment': ['error'],
     'no-case-declarations': 'off',
     'import/extensions': ['error', 'always', { ts: 'never' }],
     'import/no-extraneous-dependencies': [
@@ -29,5 +34,7 @@ module.exports = {
   parser: '@typescript-eslint/parser',
   parserOptions: {
     project: './tsconfig.json',
+    tsconfigRootDir: __dirname,
   },
+  ignorePatterns: ['.eslintrc.cjs'],
 };
