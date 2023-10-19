@@ -17,21 +17,19 @@ type ClientConnectProps = {
   id: string;
 };
 
+type HandshakeProps = {
+  clientId: string;
+  description: string;
+  candidate: string;
+};
+
 let sfuSocket: Socket;
-const clients = new Map();
+const clients: Map<string, Socket> = new Map();
 
 ioServer.on('connection', (socket: Socket) => {
   console.log('ioServer connection');
-  /**
-   * Client generates a UUID on its end
-   * Sends with the clientConnect signal
-   * Is UUID already in Map?
-   *  Replace Value with new Socket
-   * Else
-   *  Create a new KV Pair with UUID as key, socket as value
-   */
   socket.on('clientConnect', (data: ClientConnectProps) => {
-    const { type } = data;
+    const { type, id } = data;
     if (type === 'sfu') {
       sfuSocket = socket;
       console.log('SFU Connected, Storing Socket');
@@ -40,21 +38,24 @@ ioServer.on('connection', (socket: Socket) => {
         socket.emit('error', 'SFU not connected, try again later');
         return;
       }
-      console.log(`Client ${socket.id} Connected`);
-      clients.set(socket.id, socket);
+      console.log('Client Connected', id);
+      clients.set(id, socket);
     } else {
       socket.emit('error', 'Missing valid type property');
     }
   });
 
-  socket.on('producerHandshake', () => {
-    console.log('ioServer:  signal event received.');
-    sfuSocket.emit('test');
+  socket.on('producerHandshake', (data: HandshakeProps) => {
+    const client = clients.get(data.clientId);
+    // console.log("got a producer handshake signal")
     if (socket === sfuSocket) {
-      // TODO: Handle receiving signal from SFU
+      if (client) {
+        console.log('Sending data to Client from SFU:', data.clientId);
+        client.emit('producerHandshake', data);
+      }
     } else {
-      // TODO: Handle receiving signal from a client
-      // emit('signal', { ...data, sender: socket.id })
+      console.log('Sending data to SFU from:', data.clientId);
+      sfuSocket.emit('producerHandshake', { ...data, clientId: data.clientId } );
     }
   });
 
