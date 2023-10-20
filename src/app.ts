@@ -6,7 +6,7 @@ import { createServer } from 'http';
 const app = express();
 
 const httpServer = createServer(app);
-const ioServer = new Server(httpServer, { 
+const ioServer = new Server(httpServer, {
   cors: { origin: '*' },
 });
 
@@ -17,8 +17,15 @@ type ClientConnectProps = {
   id: string;
 };
 
-type HandshakeProps = {
+type ProducerHandshakeProps = {
   clientId: string;
+  description: string;
+  candidate: string;
+};
+
+type ConsumerHandshakeProps = {
+  clientId: string;
+  remotePeerId: string;
   description: string;
   candidate: string;
 };
@@ -26,6 +33,7 @@ type HandshakeProps = {
 let sfuSocket: Socket;
 const clients: Map<string, Socket> = new Map();
 
+/* eslint-disable max-lines-per-function */
 ioServer.on('connection', (socket: Socket) => {
   console.log('ioServer connection');
   socket.on('clientConnect', (data: ClientConnectProps) => {
@@ -45,30 +53,32 @@ ioServer.on('connection', (socket: Socket) => {
     }
   });
 
-  socket.on('producerHandshake', (data: HandshakeProps) => {
-    const client = clients.get(data.clientId);
+  socket.on('producerHandshake', (data: ProducerHandshakeProps) => {
     // console.log("got a producer handshake signal")
     if (socket === sfuSocket) {
+      const client = clients.get(data.clientId);
       if (client) {
         console.log('Sending data to Client from SFU:', data.clientId);
         client.emit('producerHandshake', data);
       }
     } else {
       console.log('Sending data to SFU from:', data.clientId);
-      sfuSocket.emit('producerHandshake', { ...data, clientId: data.clientId } );
+      sfuSocket.emit('producerHandshake', data );
     }
   });
-
-  socket.on('newProducer', () => {
-    console.log('ioServer:  newProducer event received.');
-  });
-
-  socket.on('consumerCatchUp', () => {
-    console.log('ioServer:  consumerCatchUp event received.');
-  });
-
-  socket.on('consumerHandshake', () => {
+  
+  socket.on('consumerHandshake', (data: ConsumerHandshakeProps) => {
     console.log('ioServer:  consume event received.');
+    if (socket === sfuSocket) {
+      const client = clients.get(data.clientId);
+      if (client) {
+        console.log('Sending consumer data to Client from SFU:', data.clientId);
+        client.emit('consumerHandshake', data);
+      }
+    } else {
+      console.log('Sending consumer data to SFU from:', data.clientId);
+      sfuSocket.emit('consumerHandshake', data );
+    }
   });
 });
 
