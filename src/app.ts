@@ -42,7 +42,10 @@ const findUUIDBySocket = (targetSocket: Socket): string | undefined => {
   return undefined;
 };
 
-const handleClientConnect = (socket: Socket, data: ClientConnectProps): void => {
+const handleClientConnect = (
+  socket: Socket,
+  data: ClientConnectProps
+): void => {
   const { type, id } = data;
   if (type === 'sfu') {
     sfuSocket = socket;
@@ -59,7 +62,10 @@ const handleClientConnect = (socket: Socket, data: ClientConnectProps): void => 
   }
 };
 
-const handleProducerHandshake = (socket: Socket, data: ProducerHandshakeProps): void => {
+const handleProducerHandshake = (
+  socket: Socket,
+  data: ProducerHandshakeProps
+): void => {
   if (socket === sfuSocket) {
     const client = clients.get(data.clientId);
     if (client) {
@@ -72,7 +78,10 @@ const handleProducerHandshake = (socket: Socket, data: ProducerHandshakeProps): 
   }
 };
 
-const handleConsumerHandshake = (socket: Socket, data: ConsumerHandshakeProps): void => {
+const handleConsumerHandshake = (
+  socket: Socket,
+  data: ConsumerHandshakeProps
+): void => {
   if (socket === sfuSocket) {
     const client = clients.get(data.clientId);
     if (client) {
@@ -87,18 +96,17 @@ const handleConsumerHandshake = (socket: Socket, data: ConsumerHandshakeProps): 
   }
 };
 
-const handleClientDisconnect = (socket: Socket): void => {
+const handleDisconnect = (socket: Socket): void => {
   console.log('client disconnected');
   if (socket === sfuSocket) {
+    socket.broadcast.emit('sfuDisconnect');
     return; // Handle SFU Disconnect
   }
 
   const clientUUID = findUUIDBySocket(socket);
   if (clientUUID) {
     clients.delete(clientUUID);
-    for (const [_uuid, sc] of clients) {
-      sc.emit('clientDisconnect', { clientId: clientUUID });
-    }
+    socket.broadcast.emit('clientDisconnect', { clientId: clientUUID });
   } else {
     console.log('Socket not found in the clients Map.');
   }
@@ -120,7 +128,7 @@ ioServer.on('connection', (socket: Socket) => {
   });
 
   socket.on('disconnect', () => {
-    handleClientDisconnect(socket);
+    handleDisconnect(socket);
   });
 });
 
